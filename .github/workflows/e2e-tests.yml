@@ -1,0 +1,21 @@
+name: E2E Tests
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Note: MongoDB + Neo4j must be running (or use GitHub services for full automation)
+      - name: Run WebdriverIO tests
+        run: npx wdio run wdio.conf.js
