@@ -1,0 +1,7 @@
+"DESCRIPTION","DURATION IN MS","NAME","PARENT SUITE","START TIME","STATUS","STOP TIME","SUB SUITE","SUITE","TEST CLASS","TEST METHOD"
+"","859","TC06 Like movie","S05 Like/Unlike API","2026-04-02","passed","2026-04-02","","","",""
+"","638","TC01 Valid login","S01 Authentication","2026-04-02","passed","2026-04-02","","","",""
+"","647","TC08 Search query","S06 Search","2026-04-02","passed","2026-04-02","","","",""
+"","499","TC03 Get recommendations","S02 Recommendation","2026-04-02","passed","2026-04-02","","","",""
+"","548","TC02 Invalid login","S01 Authentication","2026-04-02","passed","2026-04-02","","","",""
+"","1443","TC07 Unlike movie","S05 Like/Unlike API","2026-04-02","passed","2026-04-02","","","",""

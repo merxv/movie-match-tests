@@ -19,3 +19,14 @@ jobs:
       # Note: MongoDB + Neo4j must be running (or use GitHub services for full automation)
       - name: Run WebdriverIO tests
         run: npx wdio run wdio.conf.js
+
+      - name: Generate Allure HTML report
+        if: always()
+        run: npm run allure:generate
+
+      - name: Upload Allure HTML report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-report
+          path: allure-report

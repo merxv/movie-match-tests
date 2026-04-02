@@ -1,0 +1,1 @@
+{"uuid":"8f29ebcf-94b1-453c-8c99-246935b3f735","name":"\"before each\" hook for S01 Authentication","children":["c111db92-6593-4c1b-a544-bf4120bb426f"],"befores":[{"status":"passed","statusDetails":{},"stage":"finished","steps":[],"attachments":[],"parameters":[],"start":1775146234791,"name":"\"before each\" hook for S01 Authentication","stop":1775146234971}],"afters":[]}
