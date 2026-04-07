@@ -19,7 +19,7 @@ class ProfilePage extends Page {
     }
 
     get likedMovieCards () {
-        return $$("//h2[contains(normalize-space(), 'Liked Movies')]/following-sibling::div[contains(@class,'grid')][1]/div[contains(@class,'bg-white') and contains(@class,'rounded-lg') and contains(@class,'shadow-md')]")
+        return $$("//h2[contains(normalize-space(), 'Liked Movies')]/following-sibling::*[1]//div[contains(@class,'bg-white') and contains(@class,'rounded-lg') and contains(@class,'shadow-md')]")
     }
 
     open () {
@@ -44,17 +44,41 @@ class ProfilePage extends Page {
     }
 
     async getLikedMovieTitles () {
-        const cards = await this.likedMovieCards
-        const titles = []
+        const titles = await browser.execute(() => {
+            const heading = Array.from(document.querySelectorAll('h2'))
+                .find((element) => element.textContent.includes('Liked Movies'))
 
-        for (const card of cards) {
-            const titleElement = await card.$('h3')
-            if (await titleElement.isExisting()) {
-                titles.push(normalizeMovieTitle(await titleElement.getText()))
+            if (!heading) {
+                return []
             }
-        }
 
-        return titles
+            const container = heading.nextElementSibling
+            if (!container) {
+                return []
+            }
+
+            const cards = Array.from(
+                container.querySelectorAll('div.bg-white.rounded-lg.shadow-md')
+            )
+
+            if (!cards.length) {
+                return []
+            }
+
+            return cards
+                .map((card) => {
+                    const heading = card.querySelector('h3')
+                    if (heading?.textContent?.trim()) {
+                        return heading.textContent.trim()
+                    }
+
+                    const image = card.querySelector('img[alt]')
+                    return image?.alt?.trim() || ''
+                })
+                .filter(Boolean)
+        })
+
+        return titles.map(normalizeMovieTitle)
     }
 
     async hasMovie(title) {
@@ -66,12 +90,17 @@ class ProfilePage extends Page {
         const cards = await this.likedMovieCards
 
         for (const card of cards) {
+            let cardTitle = ''
             const titleElement = await card.$('h3')
-            if (!await titleElement.isExisting()) {
-                continue
+            if (await titleElement.isExisting()) {
+                cardTitle = normalizeMovieTitle(await titleElement.getText())
+            } else {
+                const poster = await card.$('img')
+                if (await poster.isExisting()) {
+                    cardTitle = normalizeMovieTitle(await poster.getAttribute('alt'))
+                }
             }
 
-            const cardTitle = normalizeMovieTitle(await titleElement.getText())
             if (cardTitle !== title) {
                 continue
             }
@@ -87,7 +116,10 @@ class ProfilePage extends Page {
             await button.click()
 
             await browser.waitUntil(
-                async () => !(await this.hasMovie(title)),
+                async () => {
+                    const titles = await this.getLikedMovieTitles()
+                    return !titles.includes(title)
+                },
                 {
                     timeout: 10000,
                     timeoutMsg: `Movie "${title}" was not removed from profile`

@@ -1,4 +1,4 @@
-const { expect } = require('@wdio/globals')
+const { expect, driver } = require('@wdio/globals')
 const LoginPage = require('../pageobjects/login.page')
 const MoviesPage = require('../pageobjects/movies.page')
 const ProfilePage = require('../pageobjects/profile.page')
@@ -108,14 +108,13 @@ describe('S05 Like/Unlike API', () => {
         await LoginPage.login(VALID_LOGIN, VALID_PASSWORD)
 
         await MoviesPage.waitForLoaded()
+        await driver.pause(500)
+        const movieTitle = await MoviesPage.likeFirstUnlikedMovie()
+
         await MoviesPage.goToProfile()
         await ProfilePage.waitForLoaded()
 
         await expect(ProfilePage.errorMessage).not.toBeExisting()
-
-        const likedMovies = await ProfilePage.getLikedMovieTitles()
-        await expect(likedMovies.length).toBeGreaterThan(0)
-        const movieTitle = likedMovies[0]
 
         await expect(await ProfilePage.hasMovie(movieTitle)).toBe(true)
         await ProfilePage.unlikeMovie(movieTitle)
@@ -141,6 +140,7 @@ describe('S06 Search', () => {
         await LoginPage.login(VALID_LOGIN, VALID_PASSWORD)
 
         await MoviesPage.waitForLoaded()
+        await driver.pause(1000)
         const firstMovieTitle = await MoviesPage.getFirstMovieTitle()
         const searchQuery = firstMovieTitle.split(' ')[0]
 
