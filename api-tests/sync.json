@@ -1,0 +1,295 @@
+{
+  "info": {
+    "_postman_id": "e4025113-2881-42eb-8e10-b6c0fd87d336",
+    "name": "S03 Data Sync",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "TC04 Data Sync like movie and TC11 Data Sync unlike movie."
+  },
+  "item": [
+    {
+      "name": "TC04 Login as Steve",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{syncUserEmail}}\",\n  \"password\": \"{{syncUserPassword}}\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/users/login",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "users",
+            "login"
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Login returned 200', function () {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "",
+              "const body = pm.response.json();",
+              "pm.expect(body.token).to.be.a('string').and.not.empty;",
+              "pm.expect(body.user.id).to.be.a('string').and.not.empty;",
+              "pm.environment.set('syncToken', body.token);",
+              "pm.environment.set('syncUserId', body.user.id);"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "TC04 Resolve movie for like",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{syncToken}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/users/profile",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "users",
+            "profile"
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Profile lookup returned 200', function () {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "",
+              "const body = pm.response.json();",
+              "const likedIds = (body.likedMovies || []).map((movie) => movie._id);",
+              "pm.environment.set('syncLikedMovieIds', JSON.stringify(likedIds));"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "TC04 Fetch movie catalog",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{baseUrl}}/api/movies",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "movies"
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Movies lookup returned 200', function () {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "",
+              "const movies = pm.response.json();",
+              "pm.expect(movies).to.be.an('array').and.not.empty;",
+              "const likedIds = JSON.parse(pm.environment.get('syncLikedMovieIds') || '[]');",
+              "const candidate = movies.find((movie) => !likedIds.includes(movie._id));",
+              "pm.expect(candidate, 'Expected at least one movie that is not liked yet').to.exist;",
+              "pm.environment.set('syncMovieId', candidate._id);",
+              "pm.environment.set('syncMovieTitle', candidate.title || '');"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "TC04 Like movie",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{syncToken}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/users/like/{{syncMovieId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "users",
+            "like",
+            "{{syncMovieId}}"
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Like returned 200', function () {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "",
+              "const body = pm.response.json();",
+              "pm.expect(body.message).to.eql('Movie liked!');"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "TC04 Verify liked movie in profile",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{syncToken}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/users/profile",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "users",
+            "profile"
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Profile returned 200', function () {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "",
+              "const body = pm.response.json();",
+              "pm.expect(body.likedMovies).to.be.an('array');",
+              "const likedMovie = body.likedMovies.find((movie) => movie._id === pm.environment.get('syncMovieId'));",
+              "pm.expect(likedMovie, 'Liked movie should be present in profile').to.exist;"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "TC11 Unlike movie",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{syncToken}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/users/unlike/{{syncMovieId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "users",
+            "unlike",
+            "{{syncMovieId}}"
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Unlike returned 200', function () {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "",
+              "const body = pm.response.json();",
+              "pm.expect(body.message).to.eql('Movie unliked!');"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "TC11 Verify unliked movie removed from profile",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{syncToken}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/users/profile",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "users",
+            "profile"
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Profile after unlike returned 200', function () {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "",
+              "const body = pm.response.json();",
+              "pm.expect(body.likedMovies).to.be.an('array');",
+              "const likedMovie = body.likedMovies.find((movie) => movie._id === pm.environment.get('syncMovieId'));",
+              "pm.expect(likedMovie, 'Movie should be removed from profile after unlike').to.not.exist;"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    }
+  ]
+}

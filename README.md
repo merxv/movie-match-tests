@@ -50,3 +50,49 @@ npx wdio run wdio.conf.js
 ```
 
 If you need a different frontend URL, set `MOVIE_MATCH_BASE_URL` before running WDIO.
+
+## API tests with Postman/Newman
+
+API suites live in `api-tests/`:
+
+- `sync.json` (`S03 / TC04`) logs in as Steve, likes a seeded movie, and verifies the API response chain
+- `admin.json` (`S04 / TC05`) logs in as Steve as admin and creates a movie through the admin endpoint
+
+The Newman runner is wrapped by `scripts/api/run-postman-suite.mjs` and then performs backend validation against MongoDB and Neo4j.
+
+Local flow:
+
+1. Generate app `.env` files:
+
+```bash
+npm run ci:write-env -- "C:\Users\legionnaire\Desktop\study\1 trimester\базы данных\ass6ver2"
+```
+
+2. Start the backend from the app repo:
+
+```bash
+cd "C:\Users\legionnaire\Desktop\study\1 trimester\базы данных\ass6ver2\backend"
+npm start
+```
+
+3. Seed deterministic test data from this repo:
+
+```bash
+cd "C:\Users\legionnaire\Desktop\Advanced-QA\movie-match-tests"
+npm run ci:seed
+```
+
+4. Run API suites:
+
+```bash
+npm run api:sync
+npm run api:admin
+npm run api:all
+```
+
+Notes:
+
+- `api-tests/environment.local.json` contains the default local base URL and Steve credentials
+- `sync` now reverts its own like with `DELETE /api/users/unlike/:movieId`, so it should not leave changed liked movies behind
+- `api:admin` creates a temporary movie and deletes it in the same collection run
+- if you want strict Mongo/Neo4j validation in addition to API assertions, export `MONGO_URI` and `NEO4J_*` or set `MOVIE_MATCH_APP_DIR`

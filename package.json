@@ -6,6 +6,9 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "wdio": "wdio run ./wdio.conf.js",
+    "api:sync": "node ./scripts/api/run-postman-suite.mjs sync",
+    "api:admin": "node ./scripts/api/run-postman-suite.mjs admin",
+    "api:all": "npm run api:sync && npm run api:admin",
     "ci:seed": "node ./scripts/ci/seed-databases.mjs",
     "ci:wait-http": "node ./scripts/ci/wait-for-http.mjs",
     "ci:write-env": "node ./scripts/ci/write-env.mjs",
@@ -34,6 +37,7 @@
     "allure-commandline": "^2.38.1",
     "bcryptjs": "^3.0.2",
     "mongodb": "^6.20.0",
-    "neo4j-driver": "^6.0.0"
+    "neo4j-driver": "^6.0.0",
+    "newman": "^6.2.2"
   }
 }

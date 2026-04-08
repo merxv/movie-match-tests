@@ -78,7 +78,7 @@ const users = [
     username: "steve",
     email: "steve@example.com",
     password: hashedPassword,
-    role: "user",
+    role: "admin",
     likedMovies: [movieIds.matrix],
   },
   {

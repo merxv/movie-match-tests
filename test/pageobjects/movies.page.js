@@ -30,6 +30,10 @@ class MoviesPage extends Page {
         return $("//a[normalize-space()='Profile']")
     }
 
+    get genresLink () {
+        return $("//a[normalize-space()='Genres']")
+    }
+
     async open () {
         return super.open('/movies')
     }
@@ -54,6 +58,11 @@ class MoviesPage extends Page {
         await this.profileLink.click()
     }
 
+    async goToGenres () {
+        await this.genresLink.waitForClickable()
+        await this.genresLink.click()
+    }
+
     async getFirstMovieTitle () {
         const cards = await this.movieCards
         if (!cards.length) {
@@ -62,6 +71,18 @@ class MoviesPage extends Page {
 
         const titleElement = await cards[0].$('h2')
         return normalizeMovieTitle(await titleElement.getText())
+    }
+
+    async getMovieCount () {
+        await browser.waitUntil(
+            async () => (await this.movieCards).length > 0,
+            {
+                timeout: 10000,
+                timeoutMsg: 'Movies list did not load'
+            }
+        )
+
+        return (await this.movieCards).length
     }
 
     async likeFirstUnlikedMovie () {
@@ -100,7 +121,10 @@ class MoviesPage extends Page {
 
     async search(query) {
         await this.searchInput.waitForDisplayed()
-        await this.searchInput.setValue(query)
+        await this.searchInput.clearValue()
+        if (query) {
+            await this.searchInput.setValue(query)
+        }
         await this.searchSubmitButton.waitForClickable()
         await this.searchSubmitButton.click()
     }

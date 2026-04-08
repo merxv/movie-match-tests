@@ -4,6 +4,8 @@ const MoviesPage = require('../pageobjects/movies.page')
 const ProfilePage = require('../pageobjects/profile.page')
 const RecommendationsPage = require('../pageobjects/recommendations.page')
 const SearchResultsPage = require('../pageobjects/search-results.page')
+const GenresPage = require('../pageobjects/genres.page')
+const GenreResultsPage = require('../pageobjects/genre-results.page')
 
 describe('S01 Authentication', () => {
     const VALID_LOGIN = 'steve@example.com'
@@ -125,6 +127,7 @@ describe('S05 Like/Unlike API', () => {
 describe('S06 Search', () => {
     const VALID_LOGIN = 'steve@example.com'
     const VALID_PASSWORD = '123'
+    const GENRE = 'Sci-Fi'
 
     beforeEach(async () => {
         await browser.url('/')
@@ -155,5 +158,48 @@ describe('S06 Search', () => {
 
         const resultTitles = await SearchResultsPage.getResultTitles()
         expect(resultTitles.some((title) => title.toLowerCase().includes(searchQuery.toLowerCase()))).toBe(true)
+    })
+
+    it('TC13 Search – Filter movies by genre', async () => {
+        await LoginPage.open()
+
+        await expect(LoginPage.inputEmail).toBeDisplayed()
+        await expect(LoginPage.inputPassword).toBeDisplayed()
+
+        await LoginPage.login(VALID_LOGIN, VALID_PASSWORD)
+
+        await MoviesPage.waitForLoaded()
+        await MoviesPage.goToGenres()
+        await GenresPage.waitForLoaded()
+
+        await GenresPage.selectGenre(GENRE)
+        await GenreResultsPage.waitForLoaded(GENRE)
+
+        await expect(browser).toHaveUrl(expect.stringContaining(`/genres/${encodeURIComponent(GENRE)}`))
+        await expect(GenreResultsPage.headingForGenre(GENRE)).toBeDisplayed()
+        await expect(GenreResultsPage.errorMessage).not.toBeExisting()
+        await expect(GenreResultsPage.emptyState).not.toBeExisting()
+        await expect(GenreResultsPage.resultCards).toBeElementsArrayOfSize({ gte: 1 })
+
+        const resultGenres = await GenreResultsPage.getResultGenres()
+        expect(resultGenres.every((text) => text.toLowerCase().includes(GENRE.toLowerCase()))).toBe(true)
+    })
+
+    it('TC14 Search – Empty search string', async () => {
+        await LoginPage.open()
+
+        await expect(LoginPage.inputEmail).toBeDisplayed()
+        await expect(LoginPage.inputPassword).toBeDisplayed()
+
+        await LoginPage.login(VALID_LOGIN, VALID_PASSWORD)
+
+        await MoviesPage.waitForLoaded()
+        const initialMovieCount = await MoviesPage.getMovieCount()
+
+        await MoviesPage.search('')
+        await MoviesPage.waitForLoaded()
+
+        await expect(browser).toHaveUrl(expect.stringContaining('/movies'))
+        await expect(await MoviesPage.getMovieCount()).toBe(initialMovieCount)
     })
 })
