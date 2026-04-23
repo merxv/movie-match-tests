@@ -1,0 +1,107 @@
+name: API Tests
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  api-tests:
+    runs-on: ubuntu-latest
+    env:
+      APP_BACKEND_PORT: "4000"
+      JWT_SECRET: ci-jwt-secret
+      MONGO_URI: mongodb://127.0.0.1:27017/moviematch_ci
+      MOVIE_MATCH_APP_DIR: ${{ github.workspace }}/app
+      NEO4J_PASSWORD: password
+      NEO4J_URI: bolt://127.0.0.1:7687
+      NEO4J_USER: neo4j
+    services:
+      mongodb:
+        image: mongo:7
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --quiet --eval \"db.adminCommand('ping').ok\""
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 12
+      neo4j:
+        image: neo4j:5
+        ports:
+          - 7474:7474
+          - 7687:7687
+        env:
+          NEO4J_AUTH: neo4j/password
+        options: >-
+          --health-cmd "cypher-shell -a bolt://127.0.0.1:7687 -u neo4j -p password 'RETURN 1;' || exit 1"
+          --health-interval 10s
+          --health-timeout 10s
+          --health-retries 20
+
+    steps:
+      - name: Checkout test repository
+        uses: actions/checkout@v4
+
+      - name: Validate app repository input
+        run: |
+          if [ -z "${{ vars.MOVIE_MATCH_APP_REPOSITORY }}" ]; then
+            echo "Repository variable MOVIE_MATCH_APP_REPOSITORY is required."
+            exit 1
+          fi
+
+      - name: Checkout app repository
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ vars.MOVIE_MATCH_APP_REPOSITORY }}
+          ref: ${{ vars.MOVIE_MATCH_APP_REF != '' && vars.MOVIE_MATCH_APP_REF || 'main' }}
+          path: app
+          token: ${{ secrets.MOVIE_MATCH_APP_TOKEN != '' && secrets.MOVIE_MATCH_APP_TOKEN || github.token }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.19.0
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            app/backend/package-lock.json
+
+      - name: Install test dependencies
+        run: npm ci
+
+      - name: Install backend dependencies
+        working-directory: app/backend
+        run: npm ci
+
+      - name: Create CI env files
+        run: npm run ci:write-env -- "$GITHUB_WORKSPACE/app"
+
+      - name: Start backend
+        run: |
+          mkdir -p ci-logs
+          cd app/backend
+          npm run start > "$GITHUB_WORKSPACE/ci-logs/backend.log" 2>&1 &
+          echo $! > "$GITHUB_WORKSPACE/ci-logs/backend.pid"
+
+      - name: Wait for backend
+        run: npm run ci:wait-http -- "http://127.0.0.1:${APP_BACKEND_PORT}/api/movies" 120000 backend
+
+      - name: Seed MongoDB and Neo4j
+        run: npm run ci:seed
+
+      - name: Run Newman API suites
+        run: npm run api:all
+
+      - name: Stop backend
+        if: always()
+        run: |
+          if [ -f ci-logs/backend.pid ]; then kill "$(cat ci-logs/backend.pid)" || true; fi
+
+      - name: Upload API logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: api-ci-logs
+          path: ci-logs
+          if-no-files-found: warn

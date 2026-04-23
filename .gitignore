@@ -138,3 +138,12 @@ dist
 # Vite logs files
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+# Performance test artifacts
+performance/results/
+
+# Mutation testing artifacts
+mutation/results/
+
+# Chaos testing artifacts
+chaos/results/
