@@ -81,6 +81,9 @@ jobs:
       - name: Create CI env files
         run: npm run ci:write-env -- "$GITHUB_WORKSPACE/app"
 
+      - name: Prepare performance result directory
+        run: mkdir -p performance/results
+
       - name: Start backend
         run: |
           mkdir -p ci-logs
@@ -95,20 +98,47 @@ jobs:
         run: npm run ci:seed
 
       - name: Run normal profile
+        id: perf_normal
+        continue-on-error: true
         run: npm run perf:normal
 
       - name: Run peak profile
+        id: perf_peak
+        continue-on-error: true
         run: npm run perf:peak
 
       - name: Run spike profile
+        id: perf_spike
+        continue-on-error: true
         run: npm run perf:spike
 
       - name: Run endurance profile
+        id: perf_endurance
+        continue-on-error: true
         run: npm run perf:endurance
 
       - name: Render performance summary
         if: always()
         run: npm run perf:report
+
+      - name: Fail if any performance profile breached thresholds
+        if: always()
+        run: |
+          failed=0
+          for step in perf_normal perf_peak perf_spike perf_endurance; do
+            result="${{ steps.perf_normal.outcome }}"
+            if [ "$step" = "perf_peak" ]; then result="${{ steps.perf_peak.outcome }}"; fi
+            if [ "$step" = "perf_spike" ]; then result="${{ steps.perf_spike.outcome }}"; fi
+            if [ "$step" = "perf_endurance" ]; then result="${{ steps.perf_endurance.outcome }}"; fi
+            if [ "$result" != "success" ]; then
+              echo "$step finished with outcome: $result"
+              failed=1
+            fi
+          done
+          if [ "$failed" -ne 0 ]; then
+            echo "One or more performance profiles breached thresholds."
+            exit 1
+          fi
 
       - name: Stop backend
         if: always()

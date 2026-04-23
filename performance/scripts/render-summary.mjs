@@ -9,8 +9,7 @@ const outputPath = process.argv[3]
   ? path.resolve(process.argv[3])
   : path.resolve('performance/results/latest-summary.md');
 
-const raw = await readFile(targetPath, 'utf8');
-const summary = JSON.parse(raw);
+const summary = await loadSummary();
 
 const lines = [
   '# Performance Summary',
@@ -51,6 +50,41 @@ const lines = [
 
 await writeFile(outputPath, `${lines.join('\n')}\n`, 'utf8');
 console.log(`Wrote markdown summary to ${outputPath}`);
+
+async function loadSummary() {
+  try {
+    const raw = await readFile(targetPath, 'utf8');
+    return JSON.parse(raw);
+  } catch (error) {
+    if (error && error.code === 'ENOENT') {
+      return {
+        generatedAt: new Date().toISOString(),
+        profile: 'unknown',
+        baseUrl: process.env.BASE_URL || 'http://127.0.0.1:4000',
+        highRiskModules: [],
+        thresholds: {
+          p95: 'n/a',
+          errorRate: 'n/a',
+          throughput: 'n/a',
+        },
+        metrics: {
+          httpReqDuration: { avg: null, median: null, p95: null },
+          throughput: { requestsPerSecond: null, iterationsPerSecond: null },
+          errorRate: { httpReqFailed: null, applicationErrors: null },
+          endpointDurations: {
+            movies: { avg: null, median: null, p95: null },
+            recommendations: { avg: null, median: null, p95: null },
+            auth: { avg: null, median: null, p95: null },
+            profile: { avg: null, median: null, p95: null },
+          },
+          businessFlowsCompleted: null,
+        },
+      };
+    }
+
+    throw error;
+  }
+}
 
 function format(value) {
   if (value === null || value === undefined || Number.isNaN(Number(value))) {
