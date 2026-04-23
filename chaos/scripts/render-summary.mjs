@@ -12,9 +12,33 @@ const markdownPath = path.join(resultsDir, "latest-summary.md");
 
 await mkdir(resultsDir, { recursive: true });
 
-const report = JSON.parse(await readFile(rawReportPath, "utf8"));
+const report = await loadReport();
 await writeFile(jsonPath, JSON.stringify(report, null, 2), "utf8");
 await writeFile(markdownPath, renderMarkdown(report), "utf8");
+
+async function loadReport() {
+  try {
+    return JSON.parse(await readFile(rawReportPath, "utf8"));
+  } catch (error) {
+    if (error && error.code === "ENOENT") {
+      return {
+        generatedAt: new Date().toISOString(),
+        baseUrl: process.env.CHAOS_BASE_URL || "http://127.0.0.1:4000",
+        appDir: process.env.MOVIE_MATCH_APP_DIR || "unknown",
+        scenarios: [],
+        totals: {
+          executed: 0,
+          completed: 0,
+          failed: 0,
+          averageAvailabilityPct: 0,
+          averageMttrMs: null,
+        },
+      };
+    }
+
+    throw error;
+  }
+}
 
 function renderMarkdown(report) {
   const completed = report.scenarios.filter((entry) => entry.status === "completed");

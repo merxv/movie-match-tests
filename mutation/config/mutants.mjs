@@ -5,7 +5,7 @@ const appDir = process.env.MOVIE_MATCH_APP_DIR
 const backendDir = path.join(appDir, "backend");
 
 function target(relativePath) {
-  return path.join(backendDir, relativePath);
+  return path.join(backendDir, ...relativePath.split(/[\\/]+/));
 }
 
 export const mutationConfig = {

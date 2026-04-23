@@ -12,11 +12,41 @@ const jsonPath = path.join(resultsDir, "latest-summary.json");
 
 await mkdir(resultsDir, { recursive: true });
 
-const report = JSON.parse(await readFile(rawReportPath, "utf8"));
+const report = await loadReport();
 const markdown = renderMarkdown(report);
 
 await writeFile(markdownPath, markdown, "utf8");
 await writeFile(jsonPath, JSON.stringify(report, null, 2), "utf8");
+
+async function loadReport() {
+  try {
+    return JSON.parse(await readFile(rawReportPath, "utf8"));
+  } catch (error) {
+    if (error && error.code === "ENOENT") {
+      return {
+        generatedAt: new Date().toISOString(),
+        suiteName: "api:all",
+        baseUrl: process.env.MUTATION_BASE_URL || "http://127.0.0.1:4000",
+        appDir: process.env.MOVIE_MATCH_APP_DIR || "unknown",
+        baseline: {
+          status: "failed",
+          durationMs: 0,
+          logPath: null,
+          failureReason: "Mutation raw report was not generated because the mutation run failed before writing latest-run.json.",
+        },
+        mutants: [],
+        totals: {
+          created: 0,
+          killed: 0,
+          survived: 0,
+          mutationScore: 0,
+        },
+      };
+    }
+
+    throw error;
+  }
+}
 
 function renderMarkdown(report) {
   const byModule = summarizeByModule(report.mutants || []);
